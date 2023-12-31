@@ -1,0 +1,65 @@
+skynet 其实可以剥开3 层:
+	1.skynet 核心网络层, 即: socket_server
+	2.skynet 核心网络层 + lua 机简单互交层(不带复杂业务) = skynet_hive
+	3.skynet 核心网络层 + lua 机复杂互交层 = skynet 全功能版
+
+
+
+skynet 版本选定(1.7.0 = 2023):
+	一切你都可以基于1.7.0 版本, 不需要更新了, 这套代码, 代码量不大, 可以自己独立维护;
+	如果你遇到bug, 哪里崩溃了, 再根据断点, 再参考最新版的代码, 进行修改即可;
+
+
+
+skynet 有什么用?
+	skynet 可以改造成一个通用应用服务器的, 看你需要哪一层;
+	如果需要actor 代理app 模式, 可以用全功能版skynet,
+	如果需要用skynet 核心网络层 + lua 机简单互交层, 高层逻辑自己再建, 可以用skynet-hive 版
+	如果只需要用skynet 核心网络层, 写c++ 代码, 及可以直接套用skynet 的网络层代码, 质量可以;
+
+
+
+skynet 改造的方向:
+	skynet 是一个纯c 语言框架, 引入boost:asio 这种高层c++ 代码, 本身就是弊端, 还不如直接植入lua 机方便,
+	这种改造比较悲剧, 慎重!!
+	如果只是为了给lua 机提供更多的网络支撑, 可以考虑;
+	如果是取代skynet 原本的纯c 网络框架, 则不可, 废物设计;
+
+
+
+学习skynet 的作用?
+	skynet = app server
+	openresty = web server
+
+	在中高层网络应用, 你可以做到通杀, 不过如果大规模人工智能运算, 则需要再搭建一个python 后端;
+	如果做嵌入式设备, 则需要做设备驱动层, 应用层的软件, 可以考虑移植: skynet/openresty;(属于中层应用)
+
+
+
+skynet/openresty:
+	* 跨平台能力好, linux/freebsd;
+	* 性能出色, lua 机性能可以;
+	* 跨芯片能力好, lua 机容易移植;
+	* 逻辑简单, 容易维护, 可以自我把控;
+
+	总体来说, skynet/openresty 都属于中层应用, 不大不小, 但主要就是好用;
+	优点显然易见, 缺点也显然易见(适合自己的, 才是最好的);
+
+	如果后续国产芯片真的可以自产, 在lua 上面实现自产自足, 并不是没有可能!!
+
+
+
+python 类似skynet 的框架:
+	类似skynet, 还有一个kbengine, 只不过是使用python 作为母机器的脚本, 呵呵, 主打就是: python 有大量的库可用, 二次开发方便快捷;
+	但实际上肯定不如skynet 敏捷, 性能也没有skynet 好;
+	不过skynet 在可移植的方面, python 也不太可能移植;
+
+
+
+client:
+	openresty = web 浏览器, 不需要客户端, 只需要js+html5+css
+	skynet = qt / 其他可视化引擎
+
+
+
+
