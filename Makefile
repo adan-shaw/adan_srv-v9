@@ -20,9 +20,13 @@ src/hive_cell_lib.c \
 src/hive_system_lib.c \
 src/hive_socket_lib.c
 
+LUA=$(lua_home)
+
+
+
 all :
 	echo 'make win or make posix or make macosx'
-	echo 'for test, you need to also make lua(default build linux's lua version)'
+	echo 'for test, you need to also make lua(default build lua version of linux)'
 
 win : hive/core.dll
 posix : hive/core.so
@@ -49,7 +53,7 @@ clean :
 
 
 
-lua :
+lua : $(LUA)
 	cd $(lua_home) && make linux
 	#cd $(lua_home) && make freebsd
 
