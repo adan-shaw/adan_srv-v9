@@ -91,13 +91,14 @@ static int lrelease (lua_State * L)
 
 void cell_touserdata (lua_State * L, int index, struct cell *c)
 {
+	struct cell_ud *cud;
 	lua_rawgetp (L, index, c);
 	if (lua_isuserdata (L, -1))
 	{
 		return;
 	}
 	lua_pop (L, 1);
-	struct cell_ud *cud = lua_newuserdata (L, sizeof (*cud));
+	cud = lua_newuserdata (L, sizeof (*cud));
 	cud->c = c;
 	cell_grab (c);
 	if (luaL_newmetatable (L, "cell"))
@@ -116,6 +117,7 @@ void cell_touserdata (lua_State * L, int index, struct cell *c)
 
 struct cell *cell_fromuserdata (lua_State * L, int index)
 {
+	struct cell_ud *cud;
 	if (lua_type (L, index) != LUA_TUSERDATA)
 	{
 		return NULL;
@@ -126,7 +128,7 @@ struct cell *cell_fromuserdata (lua_State * L, int index)
 		if (lua_toboolean (L, -1))
 		{
 			lua_pop (L, 2);
-			struct cell_ud *cud = lua_touserdata (L, index);
+			cud = lua_touserdata (L, index);
 			return cud->c;
 		}
 		lua_pop (L, 2);
@@ -144,6 +146,8 @@ static void mq_init (struct message_queue *mq)
 
 static void mq_push (struct message_queue *mq, struct message *m)
 {
+	struct message *q;
+	int i;
 	mq->queue[mq->tail] = *m;
 	++mq->tail;
 	if (mq->tail >= mq->cap)
@@ -152,8 +156,7 @@ static void mq_push (struct message_queue *mq, struct message *m)
 	}
 	if (mq->head == mq->tail)
 	{
-		struct message *q = malloc (mq->cap * 2 * sizeof (*q));
-		int i;
+		q = malloc (mq->cap * 2 * sizeof (*q));
 		for (i = 0; i < mq->cap; i++)
 		{
 			q[i] = mq->queue[(mq->head + i) % mq->cap];
@@ -214,9 +217,8 @@ static int traceback (lua_State * L)
 
 static int lcallback (lua_State * L)
 {
-	int port = lua_tointeger (L, 1);
+	int err,n,port = lua_tointeger (L, 1);
 	void *msg = lua_touserdata (L, 2);
-	int err;
 	lua_settop (L, 0);
 	lua_pushvalue (L, lua_upvalueindex (1));	// traceback
 	if (msg == NULL)
@@ -238,7 +240,7 @@ static int lcallback (lua_State * L)
 			printf ("Unpack failed : %s\n", lua_tostring (L, -1));
 			return 0;
 		}
-		int n = lua_gettop (L);			// traceback dispatcher ...
+		n = lua_gettop (L);			// traceback dispatcher ...
 		err = lua_pcall (L, n - 2, 0, 1);	// traceback 1
 	}
 
@@ -251,19 +253,21 @@ static int lcallback (lua_State * L)
 
 struct cell *cell_new (lua_State * L, const char *mainfile)
 {
+	struct cell *c,*sys;
+	int cell_map,err;
 	luaL_requiref (L, "cell.c.socket", socket_lib, 0);
 	lua_pop (L, 1);
 	hive_getenv (L, "cell_map");
-	int cell_map = lua_absindex (L, -1);	// cell_map
+	cell_map = lua_absindex (L, -1);	// cell_map
 	luaL_requiref (L, "cell.c", cell_lib, 0);	// cell_map cell_lib
-	struct cell *c = cell_create ();
+	c = cell_create ();
 	c->L = L;
 	cell_touserdata (L, cell_map, c);	// cell_map cell_lib cell_ud
 
 	lua_setfield (L, -2, "self");	// cell_map cell_lib
 
 	hive_getenv (L, "system_pointer");
-	struct cell *sys = lua_touserdata (L, -1);	// cell_map cell_lib system_cell
+	sys = lua_touserdata (L, -1);	// cell_map cell_lib system_cell
 	lua_pop (L, 1);
 	if (sys)
 	{
@@ -275,7 +279,7 @@ struct cell *cell_new (lua_State * L, const char *mainfile)
 	lua_pushlightuserdata (L, c);
 	hive_setenv (L, "cell_pointer");
 
-	int err = luaL_loadfile (L, mainfile);
+	err = luaL_loadfile (L, mainfile);
 	if (err)
 	{
 		printf ("%d : %s\n", err, lua_tostring (L, -1));
@@ -343,8 +347,11 @@ static void trash_msg (lua_State * L, struct cell *c)
 
 int cell_dispatch_message (struct cell *c)
 {
+	int empty;
+	struct message m;
+	lua_State *L;
 	cell_lock (c);
-	lua_State *L = c->L;
+	L = c->L;
 	if (c->quit)
 	{
 		cell_destroy (c);
@@ -360,8 +367,7 @@ int cell_dispatch_message (struct cell *c)
 		scheduler_deletetask (L);
 		return CELL_EMPTY;
 	}
-	struct message m;
-	int empty = mq_pop (&c->mq, &m);
+	empty = mq_pop (&c->mq, &m);
 	if (empty || L == NULL)
 	{
 		cell_unlock (c);
@@ -377,13 +383,13 @@ int cell_dispatch_message (struct cell *c)
 
 int cell_send (struct cell *c, int port, void *msg)
 {
+	struct message m = { port, msg };
 	cell_lock (c);
 	if (c->quit || c->close)
 	{
 		cell_unlock (c);
 		return 1;
 	}
-	struct message m = { port, msg };
 	mq_push (&c->mq, &m);
 	cell_unlock (c);
 	return 0;

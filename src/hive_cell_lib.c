@@ -17,12 +17,14 @@ static int ldispatch (lua_State * L)
 
 static int lsend (lua_State * L)
 {
+	void *msg;
+	int port,n;
 	struct cell *c = cell_fromuserdata (L, 1);
 	if (c == NULL)
 	{
 		return luaL_error (L, "Need cell object at param 1");
 	}
-	int port = luaL_checkinteger (L, 2);
+	port = luaL_checkinteger (L, 2);
 	if (lua_gettop (L) == 2)
 	{
 		if (cell_send (c, port, NULL))
@@ -33,9 +35,9 @@ static int lsend (lua_State * L)
 	}
 	lua_pushcfunction (L, data_pack);
 	lua_replace (L, 2);						// cell data_pack ...
-	int n = lua_gettop (L);
+	n = lua_gettop (L);
 	lua_call (L, n - 2, 1);
-	void *msg = lua_touserdata (L, 2);
+	msg = lua_touserdata (L, 2);
 	if (cell_send (c, port, msg))
 	{
 		lua_pushcfunction (L, data_unpack);
@@ -50,12 +52,12 @@ static int lsend (lua_State * L)
 
 int cell_lib (lua_State * L)
 {
-	luaL_checkversion (L);
 	luaL_Reg l[] = {
 		{"dispatch", ldispatch},
 		{"send", lsend},
 		{NULL, NULL},
 	};
+	luaL_checkversion (L);
 	luaL_newlib (L, l);
 	return 1;
 }
