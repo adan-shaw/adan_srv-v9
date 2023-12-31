@@ -22,6 +22,7 @@ src/hive_socket_lib.c
 
 all :
 	echo 'make win or make posix or make macosx'
+	echo 'for test, you need to also make lua(default build linux's lua version)'
 
 win : hive/core.dll
 posix : hive/core.so
@@ -45,3 +46,11 @@ hive/core.dylib : $(SRC)
 
 clean :
 	rm -rf hive/core.dll hive/core.so hive/core.dylib hive/core.dylib.dSYM
+
+
+
+lua:
+	cd $(lua_home) && make linux
+	#cd $(lua_home) && make freebsd
+
+
