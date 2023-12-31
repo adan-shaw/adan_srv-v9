@@ -44,12 +44,12 @@ static int linit (lua_State * L)
 
 int cell_system_lib (lua_State * L)
 {
-	luaL_checkversion (L);
 	luaL_Reg l[] = {
 		{"kill", lkill},
 		{"init", linit},
 		{NULL, NULL},
 	};
+	luaL_checkversion (L);
 	luaL_newlib (L, l);
 	hive_getenv (L, "cell_map");
 	lua_pushcclosure (L, llaunch, 1);

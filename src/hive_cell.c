@@ -63,6 +63,7 @@ static inline void cell_lock (struct cell *c)
 {
 	while (__sync_lock_test_and_set (&c->lock, 1))
 	{
+		;//阻塞死锁(比较消耗cpu 资源, 这个API 尽量不要调用)
 	}
 }
 

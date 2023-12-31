@@ -50,6 +50,7 @@ struct socket_pool
 
 static int linit (lua_State * L)
 {
+	int i;
 	struct socket_pool *sp = lua_touserdata (L, lua_upvalueindex (1));
 	if (sp->s)
 	{
@@ -59,9 +60,8 @@ static int linit (lua_State * L)
 	sp->count = 0;
 	sp->cap = DEFAULT_SOCKET;
 	sp->id = 1;
-	sp->s = malloc (sp->cap * sizeof (struct socket *));
-	int i;
-	for (i = 0; i < sp->cap; i++)
+	sp->s = malloc (sp->cap * sizeof (struct socket *));//分配指针数组
+	for (i = 0; i < sp->cap; i++)												//填充指针数组
 	{
 		sp->s[i] = malloc (sizeof (struct socket));
 		memset (sp->s[i], 0, sizeof (struct socket));
@@ -109,9 +109,9 @@ static int lexit (lua_State * L)
 
 static void expand_pool (struct socket_pool *p)
 {
+	int i;
 	struct socket **s = malloc (p->cap * 2 * sizeof (struct socket *));
 	memset (s, 0, p->cap * 2 * sizeof (struct socket *));
-	int i;
 	for (i = 0; i < p->cap; i++)
 	{
 		int nid = p->s[i]->id % (p->cap * 2);
@@ -133,16 +133,17 @@ static void expand_pool (struct socket_pool *p)
 
 static int new_socket (struct socket_pool *p, int sock)
 {
-	int i;
+	struct socket *s;
+	int i,id,n,keepalive;
 	if (p->count >= p->cap)
 	{
 		expand_pool (p);
 	}
 	for (i = 0; i < p->cap; i++)
 	{
-		int id = p->id + i;
-		int n = id % p->cap;
-		struct socket *s = p->s[n];
+		id = p->id + i;
+		n = id % p->cap;
+		s = p->s[n];
 		if (s->status == STATUS_INVALID)
 		{
 			if (sp_add (p->fd, sock, s))
@@ -152,7 +153,7 @@ static int new_socket (struct socket_pool *p, int sock)
 			s->status = STATUS_SUSPEND;
 			s->listen = 0;
 			sp_nonblocking (sock);
-			int keepalive = 1;
+			keepalive = 1;
 			setsockopt (sock, SOL_SOCKET, SO_KEEPALIVE, (void *) &keepalive, sizeof (keepalive));
 			s->fd = sock;
 			s->id = id;
@@ -182,7 +183,7 @@ static int lconnect (lua_State * L)
 	const char *host = luaL_checkstring (L, 1);
 	const char *port = luaL_checkstring (L, 2);
 
-	memset (&ai_hints, 0, sizeof (ai_hints));
+	//memset (&ai_hints, 0, sizeof (ai_hints));
 	ai_hints.ai_family = AF_UNSPEC;
 	ai_hints.ai_socktype = SOCK_STREAM;
 	ai_hints.ai_protocol = IPPROTO_TCP;
@@ -851,7 +852,7 @@ static int llisten (lua_State * L)
 	setsockopt (listen_fd, SOL_SOCKET, SO_REUSEADDR, (void *) &reuse, sizeof (int));
 
 	struct sockaddr_in my_addr;
-	memset (&my_addr, 0, sizeof (struct sockaddr_in));
+	//memset (&my_addr, 0, sizeof (struct sockaddr_in));
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = htons (port);
 	my_addr.sin_addr.s_addr = addr;
