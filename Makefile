@@ -6,7 +6,8 @@ lua_home=lua/lua-5.4.6/src
 
 LIB_DYNAMIC_HEADFILE_PATH += -I$(lua_home)
 LIB_DYNAMIC_PATH += -L$(lua_home)
-LDFLAGS += -llua51
+#LDFLAGS += -llua51
+LDFLAGS += -llua53
 
 
 
