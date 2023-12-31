@@ -9,23 +9,23 @@
 #include "hive_seri.h"
 #include "hive_cell.h"
 
-#define TYPE_NIL 0
-#define TYPE_BOOLEAN 1
+#define TYPE_NIL (0)
+#define TYPE_BOOLEAN (1)
 // hibits 0 false 1 true
-#define TYPE_NUMBER 2
+#define TYPE_NUMBER (2)
 // hibits 0 : 0 , 1: byte, 2:word, 4: dword, 8 : double
-#define TYPE_USERDATA 3
-#define TYPE_SHORT_STRING 4
+#define TYPE_USERDATA (3)
+#define TYPE_SHORT_STRING (4)
 // hibits 0~31 : len
-#define TYPE_LONG_STRING 5
-#define TYPE_TABLE 6
-#define TYPE_CELL 7
+#define TYPE_LONG_STRING (5)
+#define TYPE_TABLE (6)
+#define TYPE_CELL (7)
 
-#define MAX_COOKIE 32
+#define MAX_COOKIE (32)
 #define COMBINE_TYPE(t,v) ((t) | (v) << 3)
 
-#define BLOCK_SIZE 128
-#define MAX_DEPTH 32
+#define BLOCK_SIZE (128)
+#define MAX_DEPTH (32)
 
 struct block
 {

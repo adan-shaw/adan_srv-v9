@@ -14,8 +14,8 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define DEFAULT_THREAD 4
-#define MAX_GLOBAL_MQ 0x10000
+#define DEFAULT_THREAD (4)
+#define MAX_GLOBAL_MQ (0x10000)
 #define GP(p) ((p) % MAX_GLOBAL_MQ)
 
 struct global_queue

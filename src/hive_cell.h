@@ -5,9 +5,9 @@
 
 struct cell;
 
-#define CELL_MESSAGE 0
-#define CELL_EMPTY 1
-#define CELL_QUIT 2
+#define CELL_MESSAGE (0)
+#define CELL_EMPTY (1)
+#define CELL_QUIT (2)
 
 struct cell *cell_new (lua_State * L, const char *mainfile);
 int cell_dispatch_message (struct cell *c);

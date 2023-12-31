@@ -10,15 +10,15 @@
 #include <assert.h>
 #include <errno.h>
 
-#define MAX_ID 0x7fffffff
-#define DEFAULT_SOCKET 128
-#define READ_BUFFER 4000
-#define MAX_EVENT 32
-#define BACKLOG 32
+#define MAX_ID (0x7fffffff)
+#define DEFAULT_SOCKET (128)
+#define READ_BUFFER (4000)
+#define MAX_EVENT (32)
+#define BACKLOG (32)
 
-#define STATUS_INVALID 0
-#define STATUS_HALFCLOSE 1
-#define STATUS_SUSPEND 2
+#define STATUS_INVALID (0)
+#define STATUS_HALFCLOSE (1)
+#define STATUS_SUSPEND (2)
 
 struct write_buffer
 {

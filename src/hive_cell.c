@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#define DEFAULT_QUEUE 64
+#define DEFAULT_QUEUE (64)
 
 struct message
 {
