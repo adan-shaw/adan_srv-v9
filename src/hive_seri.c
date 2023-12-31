@@ -58,6 +58,7 @@ inline static struct block *blk_alloc (void)
 
 inline static void wb_push (struct write_block *b, const void *buf, int sz)
 {
+	int copy;
 	const char *buffer = buf;
 	if (b->ptr == BLOCK_SIZE)
 	{
@@ -73,7 +74,7 @@ inline static void wb_push (struct write_block *b, const void *buf, int sz)
 	}
 	else
 	{
-		int copy = BLOCK_SIZE - b->ptr;
+		copy = BLOCK_SIZE - b->ptr;
 		memcpy (b->current->buffer + b->ptr, buffer, copy);
 		buffer += copy;
 		b->len += copy;
@@ -84,6 +85,7 @@ inline static void wb_push (struct write_block *b, const void *buf, int sz)
 
 static void wb_init (struct write_block *wb, struct block *b)
 {
+	int *plen,sz;
 	if (b == NULL)
 	{
 		wb->head = blk_alloc ();
@@ -95,8 +97,8 @@ static void wb_init (struct write_block *wb, struct block *b)
 	else
 	{
 		wb->head = b;
-		int *plen = (int *) b->buffer;
-		int sz = *plen;
+		*plen = (int *) b->buffer;
+		sz = *plen;
 		wb->len = sz;
 		while (b->next)
 		{
@@ -119,10 +121,10 @@ static struct block *wb_close (struct write_block *b)
 
 static void wb_free (struct write_block *wb)
 {
-	struct block *blk = wb->head;
+	struct block *next,*blk = wb->head;
 	while (blk)
 	{
-		struct block *next = blk->next;
+		next = blk->next;
 		free (blk);
 		blk = next;
 	}
@@ -144,6 +146,10 @@ static int rb_init (struct read_block *rb, struct block *b)
 
 static void *rb_read (struct read_block *rb, void *buffer, int sz)
 {
+	int copy,ptr;
+	struct block *next;
+	void *ret;
+	char *tmp;
 	if (rb->len < sz)
 	{
 		return NULL;
@@ -151,7 +157,7 @@ static void *rb_read (struct read_block *rb, void *buffer, int sz)
 
 	if (rb->buffer)
 	{
-		int ptr = rb->ptr;
+		ptr = rb->ptr;
 		rb->ptr += sz;
 		rb->len -= sz;
 		return rb->buffer + ptr;
@@ -159,24 +165,23 @@ static void *rb_read (struct read_block *rb, void *buffer, int sz)
 
 	if (rb->ptr == BLOCK_SIZE)
 	{
-		struct block *next = rb->current->next;
+		next = rb->current->next;
 		free (rb->current);
 		rb->current = next;
 		rb->ptr = 0;
 	}
 
-	int copy = BLOCK_SIZE - rb->ptr;
+	copy = BLOCK_SIZE - rb->ptr;
 
 	if (sz <= copy)
 	{
-		void *ret = rb->current->buffer + rb->ptr;
+		ret = rb->current->buffer + rb->ptr;
 		rb->ptr += sz;
 		rb->len -= sz;
 		return ret;
 	}
 
-	char *tmp = buffer;
-
+	tmp = buffer;
 	memcpy (tmp, rb->current->buffer + rb->ptr, copy);
 	sz -= copy;
 	tmp += copy;
@@ -184,7 +189,7 @@ static void *rb_read (struct read_block *rb, void *buffer, int sz)
 
 	for (;;)
 	{
-		struct block *next = rb->current->next;
+		next = rb->current->next;
 		free (rb->current);
 		rb->current = next;
 
@@ -204,9 +209,10 @@ static void *rb_read (struct read_block *rb, void *buffer, int sz)
 
 static void rb_close (struct read_block *rb)
 {
+	struct block *next;
 	while (rb->current)
 	{
-		struct block *next = rb->current->next;
+		next = rb->current->next;
 		free (rb->current);
 		rb->current = next;
 	}
@@ -228,34 +234,37 @@ static inline void wb_boolean (struct write_block *wb, int boolean)
 
 static inline void wb_integer (struct write_block *wb, int v)
 {
+	int n;
+	uint16_t word;
+	uint8_t byte;
 	if (v == 0)
 	{
-		int n = COMBINE_TYPE (TYPE_NUMBER, 0);
+		n = COMBINE_TYPE (TYPE_NUMBER, 0);
 		wb_push (wb, &n, 1);
 	}
 	else if (v < 0)
 	{
-		int n = COMBINE_TYPE (TYPE_NUMBER, 4);
+		n = COMBINE_TYPE (TYPE_NUMBER, 4);
 		wb_push (wb, &n, 1);
 		wb_push (wb, &v, 4);
 	}
 	else if (v < 0x100)
 	{
-		int n = COMBINE_TYPE (TYPE_NUMBER, 1);
+		n = COMBINE_TYPE (TYPE_NUMBER, 1);
 		wb_push (wb, &n, 1);
-		uint8_t byte = (uint8_t) v;
+		byte = (uint8_t) v;
 		wb_push (wb, &byte, 1);
 	}
 	else if (v < 0x10000)
 	{
-		int n = COMBINE_TYPE (TYPE_NUMBER, 2);
+		n = COMBINE_TYPE (TYPE_NUMBER, 2);
 		wb_push (wb, &n, 1);
-		uint16_t word = (uint16_t) v;
+		word = (uint16_t) v;
 		wb_push (wb, &word, 2);
 	}
 	else
 	{
-		int n = COMBINE_TYPE (TYPE_NUMBER, 4);
+		n = COMBINE_TYPE (TYPE_NUMBER, 4);
 		wb_push (wb, &n, 1);
 		wb_push (wb, &v, 4);
 	}
@@ -277,9 +286,12 @@ static inline void wb_pointer (struct write_block *wb, void *v, int type)
 
 static inline void wb_string (struct write_block *wb, const char *str, int len)
 {
+	int n;
+	uint32_t x32;
+	uint16_t x16;
 	if (len < MAX_COOKIE)
 	{
-		int n = COMBINE_TYPE (TYPE_SHORT_STRING, len);
+		n = COMBINE_TYPE (TYPE_SHORT_STRING, len);
 		wb_push (wb, &n, 1);
 		if (len > 0)
 		{
@@ -288,20 +300,19 @@ static inline void wb_string (struct write_block *wb, const char *str, int len)
 	}
 	else
 	{
-		int n;
 		if (len < 0x10000)
 		{
 			n = COMBINE_TYPE (TYPE_LONG_STRING, 2);
 			wb_push (wb, &n, 1);
-			uint16_t x = (uint16_t) len;
-			wb_push (wb, &x, 2);
+			x16 = (uint16_t) len;
+			wb_push (wb, &x16, 2);
 		}
 		else
 		{
 			n = COMBINE_TYPE (TYPE_LONG_STRING, 4);
 			wb_push (wb, &n, 1);
-			uint32_t x = (uint32_t) len;
-			wb_push (wb, &x, 4);
+			x32 = (uint32_t) len;
+			wb_push (wb, &x32, 4);
 		}
 		wb_push (wb, str, len);
 	}
@@ -311,20 +322,19 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 
 static int wb_table_array (lua_State * L, struct write_block *wb, int index, int depth)
 {
-	int array_size = lua_rawlen (L, index);
+	int i,n,array_size = lua_rawlen (L, index);
 	if (array_size >= MAX_COOKIE - 1)
 	{
-		int n = COMBINE_TYPE (TYPE_TABLE, MAX_COOKIE - 1);
+		n = COMBINE_TYPE (TYPE_TABLE, MAX_COOKIE - 1);
 		wb_push (wb, &n, 1);
 		wb_integer (wb, array_size);
 	}
 	else
 	{
-		int n = COMBINE_TYPE (TYPE_TABLE, array_size);
+		n = COMBINE_TYPE (TYPE_TABLE, array_size);
 		wb_push (wb, &n, 1);
 	}
 
-	int i;
 	for (i = 1; i <= array_size; i++)
 	{
 		lua_rawgeti (L, index, i);
@@ -337,13 +347,15 @@ static int wb_table_array (lua_State * L, struct write_block *wb, int index, int
 
 static void wb_table_hash (lua_State * L, struct write_block *wb, int index, int depth, int array_size)
 {
+	lua_Number k;
+	int32_t x;
 	lua_pushnil (L);
 	while (lua_next (L, index) != 0)
 	{
 		if (lua_type (L, -2) == LUA_TNUMBER)
 		{
-			lua_Number k = lua_tonumber (L, -2);
-			int32_t x = (int32_t) lua_tointeger (L, -2);
+			k = lua_tonumber (L, -2);
+			x = (int32_t) lua_tointeger (L, -2);
 			if (k == (lua_Number) x && x > 0 && x <= array_size)
 			{
 				lua_pop (L, 1);
@@ -359,22 +371,24 @@ static void wb_table_hash (lua_State * L, struct write_block *wb, int index, int
 
 static void wb_table (lua_State * L, struct write_block *wb, int index, int depth)
 {
+	int array_size;
 	if (index < 0)
 	{
 		index = lua_gettop (L) + index + 1;
 	}
-	int array_size = wb_table_array (L, wb, index, depth);
+	array_size = wb_table_array (L, wb, index, depth);
 	wb_table_hash (L, wb, index, depth, array_size);
 }
 
 static void _pack_one (lua_State * L, struct write_block *b, int index, int depth)
 {
+	int type;
 	if (depth > MAX_DEPTH)
 	{
 		wb_free (b);
 		luaL_error (L, "serialize can't pack too depth table");
 	}
-	int type = lua_type (L, index);
+	type = lua_type (L, index);
 	switch (type)
 	{
 	case LUA_TNIL:
