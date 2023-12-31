@@ -3,6 +3,6 @@
 
 #include "lua.h"
 
-int socket_lib(lua_State *L);
+int socket_lib (lua_State * L);
 
 #endif

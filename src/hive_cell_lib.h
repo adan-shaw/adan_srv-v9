@@ -3,6 +3,6 @@
 
 #include "lua.h"
 
-int cell_lib(lua_State *L);
+int cell_lib (lua_State * L);
 
 #endif
