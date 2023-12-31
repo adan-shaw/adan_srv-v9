@@ -49,8 +49,10 @@ clean :
 
 
 
-lua:
+lua :
 	cd $(lua_home) && make linux
 	#cd $(lua_home) && make freebsd
 
-
+cleanall :
+	rm -rf hive/core.dll hive/core.so hive/core.dylib hive/core.dylib.dSYM
+	cd $(lua_home) && make clean
