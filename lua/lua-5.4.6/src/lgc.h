@@ -110,17 +110,12 @@
 #define G_OLD		4	/* really old object (not to be visited) */
 #define G_TOUCHED1	5	/* old object touched this cycle */
 #define G_TOUCHED2	6	/* old object touched in previous cycle */
-#define G_SHARED	7	/* object is shared */
 
 #define AGEBITS		7  /* all age bits (111) */
 
 #define getage(o)	((o)->marked & AGEBITS)
 #define setage(o,a)  ((o)->marked = cast_byte(((o)->marked & (~AGEBITS)) | a))
 #define isold(o)	(getage(o) > G_SURVIVAL)
-
-#define isshared(x)     (getage(x) == G_SHARED)
-#define makeshared(x)   setage(x, G_SHARED)
-#define ispurewhite(x)  (iswhite(x) && !isshared(x))
 
 #define changeage(o,f,t)  \
 	check_exp(getage(o) == (f), (o)->marked ^= ((f)^(t)))
@@ -178,14 +173,14 @@
 
 
 #define luaC_objbarrier(L,p,o) (  \
-	(isblack(p) && ispurewhite(o)) ? \
+	(isblack(p) && iswhite(o)) ? \
 	luaC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
 
 #define luaC_barrier(L,p,v) (  \
 	iscollectable(v) ? luaC_objbarrier(L,p,gcvalue(v)) : cast_void(0))
 
 #define luaC_objbarrierback(L,p,o) (  \
-	(isblack(p) && ispurewhite(o)) ? luaC_barrierback_(L,p) : cast_void(0))
+	(isblack(p) && iswhite(o)) ? luaC_barrierback_(L,p) : cast_void(0))
 
 #define luaC_barrierback(L,p,v) (  \
 	iscollectable(v) ? luaC_objbarrierback(L, p, gcvalue(v)) : cast_void(0))

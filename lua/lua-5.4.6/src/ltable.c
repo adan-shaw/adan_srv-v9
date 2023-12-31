@@ -230,8 +230,6 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
       return fvalue(k1) == fvalueraw(keyval(n2));
     case ctb(LUA_VLNGSTR):
       return luaS_eqlngstr(tsvalue(k1), keystrval(n2));
-    case ctb(LUA_VSHRSTR):
-      return eqshrstr(tsvalue(k1), keystrval(n2));
     default:
       return gcvalue(k1) == gcvalueraw(keyval(n2));
   }
@@ -667,8 +665,6 @@ static Node *getfreepos (Table *t) {
 void luaH_newkey (lua_State *L, Table *t, const TValue *key, TValue *value) {
   Node *mp;
   TValue aux;
-  if (l_unlikely(isshared(t)))
-    luaG_runerror(L, "attempt to change a shared table");
   if (l_unlikely(ttisnil(key)))
     luaG_runerror(L, "table index is nil");
   else if (ttisfloat(key)) {
@@ -816,11 +812,8 @@ void luaH_finishset (lua_State *L, Table *t, const TValue *key,
                                    const TValue *slot, TValue *value) {
   if (isabstkey(slot))
     luaH_newkey(L, t, key, value);
-  else {
-    if (l_unlikely(isshared(t)))
-      luaG_runerror(L, "attempt to change a shared table");
+  else
     setobj2t(L, cast(TValue *, slot), value);
-  }
 }
 
 
@@ -841,11 +834,8 @@ void luaH_setint (lua_State *L, Table *t, lua_Integer key, TValue *value) {
     setivalue(&k, key);
     luaH_newkey(L, t, &k, value);
   }
-  else {
-    if (l_unlikely(isshared(t)))
-      luaG_runerror(L, "attempt to change a shared table");
+  else
     setobj2t(L, cast(TValue *, p), value);
-  }
 }
 
 

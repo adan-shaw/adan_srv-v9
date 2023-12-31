@@ -1,5 +1,6 @@
-# 更换不同的lua 版本(最贴切是lua 5.4.3, lua5.1.5/luajit 需要做一点调整)
-lua_home=lua/lua-5.4.3
+# 更换不同的lua 版本(最贴切是lua 5.4.6, lua5.1.5/luajit 需要做一点调整;)
+# 但skynet 使用的lua 5.4.3 是带锁的, 不解, 不知道会不会使用到锁, 公版的lua 是没有锁的, 需要详细看看skynet=hive 源码
+lua_home=lua/lua-5.4.6/src
 #lua_home=lua/LuaJIT-2.1.0-beta3/src
 #lua_home=lua/lua-5.1.5/src
 

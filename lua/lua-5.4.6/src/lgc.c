@@ -80,9 +80,9 @@
   (x->marked = cast_byte((x->marked & ~WHITEBITS) | bitmask(BLACKBIT)))
 
 
-#define valiswhite(x)   (iscollectable(x) && ispurewhite(gcvalue(x)))
+#define valiswhite(x)   (iscollectable(x) && iswhite(gcvalue(x)))
 
-#define keyiswhite(n)   (keyiscollectable(n) && ispurewhite(gckey(n)))
+#define keyiswhite(n)   (keyiscollectable(n) && iswhite(gckey(n)))
 
 
 /*
@@ -96,7 +96,7 @@
 
 #define markkey(g, n)	{ if keyiswhite(n) reallymarkobject(g,gckey(n)); }
 
-#define markobject(g,t)	{ if (ispurewhite(t)) reallymarkobject(g, obj2gco(t)); }
+#define markobject(g,t)	{ if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
 
 /*
 ** mark an object that can be NULL (either because it is really optional,
@@ -188,7 +188,7 @@ static int iscleared (global_State *g, const GCObject *o) {
     markobject(g, o);  /* strings are 'values', so are never weak */
     return 0;
   }
-  else return ispurewhite(o);
+  else return iswhite(o);
 }
 
 
@@ -207,7 +207,7 @@ static int iscleared (global_State *g, const GCObject *o) {
 */
 void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
   global_State *g = G(L);
-  lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o) && !isshared(o));
+  lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
   if (keepinvariant(g)) {  /* must keep invariant? */
     reallymarkobject(g, v);  /* restore invariant */
     if (isold(o)) {
@@ -828,9 +828,7 @@ static GCObject **sweeplist (lua_State *L, GCObject **p, int countin,
   for (i = 0; *p != NULL && i < countin; i++) {
     GCObject *curr = *p;
     int marked = curr->marked;
-    if (isshared(curr))
-      p = &curr->next;
-    else if (isdeadm(ow, marked)) {  /* is 'curr' dead? */
+    if (isdeadm(ow, marked)) {  /* is 'curr' dead? */
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
@@ -1080,9 +1078,7 @@ static void sweep2old (lua_State *L, GCObject **p) {
   GCObject *curr;
   global_State *g = G(L);
   while ((curr = *p) != NULL) {
-    if (isshared(curr))
-       p = &curr->next;  /* go to next element */
-    else if (iswhite(curr)) {  /* is 'curr' dead? */
+    if (iswhite(curr)) {  /* is 'curr' dead? */
       lua_assert(isdead(g, curr));
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
@@ -1128,9 +1124,7 @@ static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
   int white = luaC_white(g);
   GCObject *curr;
   while ((curr = *p) != limit) {
-    if (isshared(curr))
-      p = &curr->next;  /* go to next element */
-    else if (iswhite(curr)) {  /* is 'curr' dead? */
+    if (iswhite(curr)) {  /* is 'curr' dead? */
       lua_assert(!isold(curr) && isdead(g, curr));
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
