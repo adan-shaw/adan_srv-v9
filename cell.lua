@@ -204,6 +204,7 @@ end
 
 function cell.connect(addr, port)
 	sockets_fd = sockets_fd or cell.cmd("socket")
+	print("cell.connect(): port=",port,"addr=",addr,"sockets_fd=",sockets_fd)--for test
 	local obj = { __fd = assert(cell.call(sockets_fd, "connect", self, addr, port), "Connect failed") }
 	return setmetatable(obj, socket_meta)
 end
@@ -211,6 +212,7 @@ end
 function cell.listen(port, accepter)
 	assert(type(accepter) == "function")
 	sockets_fd = sockets_fd or cell.cmd("socket")
+	print("cell.listen(): port=",port,"sockets_fd=",sockets_fd)--for test
 	--使用断言assert 来启动listen(), 如果出错, 程序直接终止!! 用assert 替换if 的小把戏
 	local obj = { __fd = assert(cell.call(sockets_fd, "listen", self, port), "Listen failed") }
 	sockets_accept[obj.__fd] =  function(fd, addr)

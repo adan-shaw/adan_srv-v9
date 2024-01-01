@@ -176,9 +176,7 @@ _error:
 static int lconnect (lua_State * L)
 {
 	int status, fd, sock;
-	struct addrinfo ai_hints;
-	struct addrinfo *ai_list = NULL;
-	struct addrinfo *ai_ptr = NULL;
+	struct addrinfo ai_hints,*ai_list = NULL,*ai_ptr = NULL;
 
 	struct socket_pool *pool = get_sp (L);
 	const char *host = luaL_checkstring (L, 1);

@@ -13,6 +13,7 @@ csocket.init()
 
 function command.connect(source,addr,port)
 	local fd = csocket.connect(addr, port)
+	print("command.connect(): fd=",fd)--for test
 	if fd then
 		sockets[fd] = source
 		return fd
@@ -23,6 +24,7 @@ end
 --成功返回fd, 失败返回nil
 function command.listen(source, port)
 	local fd = csocket.listen(port)
+	print("command.connect(): fd=",fd)--for test
 	if fd then
 		sockets[fd] = source
 		return fd
