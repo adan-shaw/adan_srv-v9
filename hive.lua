@@ -1,4 +1,8 @@
+--装载./hive/core.so
 local c = require "hive.core"
+
+-- 禁用断言
+_ASSERT = false
 
 local system_cell = assert(package.searchpath("hive.system", package.path),"system cell was not found")
 

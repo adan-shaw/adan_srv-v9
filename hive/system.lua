@@ -1,4 +1,6 @@
+--装载../cell.lua
 local cell = require "cell"
+--装载../cell.lua 中的system
 local system = require "cell.system"
 local table = table
 
@@ -8,6 +10,9 @@ local ticker = 0
 local timer = {}
 local free_queue = {}
 local socket_cell = nil
+
+-- 禁用断言
+_ASSERT = false
 
 local function alloc_queue()
 	local n = #free_queue

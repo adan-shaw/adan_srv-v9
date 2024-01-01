@@ -1,4 +1,6 @@
+--装载self.c
 local c = require "cell.c"
+--装载self.c.socket
 local csocket = require "cell.c.socket"
 local coroutine = coroutine
 local assert = assert
@@ -24,6 +26,9 @@ cell.self = self
 
 local event_q1 = {}
 local event_q2 = {}
+
+-- 禁用断言
+_ASSERT = false
 
 local function new_task(source, session, co, event)
 	task_coroutine[event] = co
@@ -144,10 +149,12 @@ local function resume_co(session, ...)
 end
 
 local function deliver_event()
+	local ok = nil
+	local err = nil
 	while next(event_q1) do
 		event_q1, event_q2 = event_q2, event_q1
 		for i = 1, #event_q2 do
-			local ok, err = pcall(resume_co,event_q2[i])
+			ok, err = pcall(resume_co,event_q2[i])
 			if not ok then
 				print(cell.self,err)
 			end
@@ -332,9 +339,10 @@ cell.dispatch {
 cell.dispatch {
 	id = 5, -- exit
 	dispatch = function()
+		local source = nil
 		local err = tostring(self) .. " is dead"
 		for event,session in pairs(task_session) do
-			local source = task_source[event]
+			source = task_source[event]
 			if source ~= self then
 				c.send(source, 1, session, false, err)
 			end

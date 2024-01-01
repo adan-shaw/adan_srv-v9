@@ -1,11 +1,16 @@
-local csocket = require "cell.c.socket"
-csocket.init()
-
+--装载../cell.lua
 local cell = require "cell"
+--装载../cell.lua 中的c.socket
+local csocket = require "cell.c.socket"
 local command = {}
 local message = {}
-
 local sockets = {}
+local type = type
+local pcall = pcall
+csocket.init()
+
+-- 禁用断言
+_ASSERT = false
 
 function command.connect(source,addr,port)
 	local fd = csocket.connect(addr, port)
@@ -26,9 +31,10 @@ end
 function command.forward(fd, addr)
 	local data = sockets[fd]
 	sockets[fd] = addr
+	local v = nil
 	if type(data) == "table" then
 		for i=1,#data do
-			local v = data[i]
+			v = data[i]
 			if not pcall(cell.rawsend, addr, 6, v[1], v[2], v[3]) then
 				csocket.freepack(v[3])
 				message.disconnect(v[1])
@@ -54,10 +60,12 @@ cell.dispatch {
 
 function cell.main()
 	local result = {}
+	local v = nil
+	local c = nil
 	while true do
 		for i = 1, csocket.poll(result) do
-			local v = result[i]
-			local c = sockets[v[1]]
+			v = result[i]
+			c = sockets[v[1]]
 			if c then
 				if type(v[3]) == "string" then
 					-- accept: listen fd, new fd , ip
