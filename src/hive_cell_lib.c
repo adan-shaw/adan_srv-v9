@@ -18,7 +18,7 @@ static int ldispatch (lua_State * L)
 static int lsend (lua_State * L)
 {
 	void *msg;
-	int port,n;
+	int port, n;
 	struct cell *c = cell_fromuserdata (L, 1);
 	if (c == NULL)
 	{

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+#include <alloca.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -85,7 +86,7 @@ inline static void wb_push (struct write_block *b, const void *buf, int sz)
 
 static void wb_init (struct write_block *wb, struct block *b)
 {
-	int *plen,sz;
+	int *plen, sz;
 	if (b == NULL)
 	{
 		wb->head = blk_alloc ();
@@ -97,7 +98,7 @@ static void wb_init (struct write_block *wb, struct block *b)
 	else
 	{
 		wb->head = b;
-		*plen = (int *) b->buffer;
+		plen = (int *) b->buffer;
 		sz = *plen;
 		wb->len = sz;
 		while (b->next)
@@ -121,7 +122,7 @@ static struct block *wb_close (struct write_block *b)
 
 static void wb_free (struct write_block *wb)
 {
-	struct block *next,*blk = wb->head;
+	struct block *next, *blk = wb->head;
 	while (blk)
 	{
 		next = blk->next;
@@ -146,7 +147,7 @@ static int rb_init (struct read_block *rb, struct block *b)
 
 static void *rb_read (struct read_block *rb, void *buffer, int sz)
 {
-	int copy,ptr;
+	int copy, ptr;
 	struct block *next;
 	void *ret;
 	char *tmp;
@@ -322,7 +323,7 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 
 static int wb_table_array (lua_State * L, struct write_block *wb, int index, int depth)
 {
-	int i,n,array_size = lua_rawlen (L, index);
+	int i, n, array_size = lua_rawlen (L, index);
 	if (array_size >= MAX_COOKIE - 1)
 	{
 		n = COMBINE_TYPE (TYPE_TABLE, MAX_COOKIE - 1);
@@ -383,6 +384,11 @@ static void wb_table (lua_State * L, struct write_block *wb, int index, int dept
 static void _pack_one (lua_State * L, struct write_block *b, int index, int depth)
 {
 	int type;
+	int32_t x;
+	lua_Number n;
+	size_t sz;
+	const char *str;
+	struct cell *c;
 	if (depth > MAX_DEPTH)
 	{
 		wb_free (b);
@@ -396,8 +402,8 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 		break;
 	case LUA_TNUMBER:
 		{
-			int32_t x = (int32_t) lua_tointeger (L, index);
-			lua_Number n = lua_tonumber (L, index);
+			x = (int32_t) lua_tointeger (L, index);
+			n = lua_tonumber (L, index);
 			if ((lua_Number) x == n)
 			{
 				wb_integer (b, x);
@@ -413,8 +419,8 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 		break;
 	case LUA_TSTRING:
 		{
-			size_t sz = 0;
-			const char *str = lua_tolstring (L, index, &sz);
+			sz = 0;
+			str = lua_tolstring (L, index, &sz);
 			wb_string (b, str, (int) sz);
 			break;
 		}
@@ -426,7 +432,7 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 		break;
 	case LUA_TUSERDATA:
 		{
-			struct cell *c = cell_fromuserdata (L, index);
+			c = cell_fromuserdata (L, index);
 			if (c)
 			{
 				cell_grab (c);
@@ -443,8 +449,7 @@ static void _pack_one (lua_State * L, struct write_block *b, int index, int dept
 
 static void _pack_from (lua_State * L, struct write_block *b, int from)
 {
-	int n = lua_gettop (L) - from;
-	int i;
+	int i, n = lua_gettop (L) - from;
 	for (i = 1; i <= n; i++)
 	{
 		_pack_one (L, b, from + i, 0);
@@ -454,9 +459,10 @@ static void _pack_from (lua_State * L, struct write_block *b, int from)
 int data_pack (lua_State * L)
 {
 	struct write_block b;
+	struct block *ret;
 	wb_init (&b, NULL);
 	_pack_from (L, &b, 0);
-	struct block *ret = wb_close (&b);
+	ret = wb_close (&b);
 	lua_pushlightuserdata (L, ret);
 	return 1;
 }
@@ -475,41 +481,45 @@ static inline void __invalid_stream (lua_State * L, struct read_block *rb, int l
 
 static double _get_number (lua_State * L, struct read_block *rb, int cookie)
 {
+	uint8_t n8, *pn8;
+	uint16_t n16, *pn16;
+	int n, *pn;
+	double nd, *pnd;
 	switch (cookie)
 	{
 	case 0:
 		return 0;
 	case 1:
 		{
-			uint8_t n = 0;
-			uint8_t *pn = rb_read (rb, &n, 1);
-			if (pn == NULL)
+			n8 = 0;
+			pn8 = rb_read (rb, &n8, 1);
+			if (pn8 == NULL)
 				_invalid_stream (L, rb);
-			return *pn;
+			return *pn8;
 		}
 	case 2:
 		{
-			uint16_t n = 0;
-			uint16_t *pn = rb_read (rb, &n, 2);
-			if (pn == NULL)
+			n16 = 0;
+			pn16 = rb_read (rb, &n16, 2);
+			if (pn16 == NULL)
 				_invalid_stream (L, rb);
-			return *pn;
+			return *pn16;
 		}
 	case 4:
 		{
-			int n = 0;
-			int *pn = rb_read (rb, &n, 4);
+			n = 0;
+			pn = rb_read (rb, &n, 4);
 			if (pn == NULL)
 				_invalid_stream (L, rb);
 			return *pn;
 		}
 	case 8:
 		{
-			double n = 0;
-			double *pn = rb_read (rb, &n, 8);
-			if (pn == NULL)
+			nd = 0;
+			pnd = rb_read (rb, &nd, 8);
+			if (pnd == NULL)
 				_invalid_stream (L, rb);
-			return *pn;
+			return *pnd;
 		}
 	default:
 		_invalid_stream (L, rb);
@@ -530,7 +540,8 @@ static void *_get_pointer (lua_State * L, struct read_block *rb)
 
 static void _get_buffer (lua_State * L, struct read_block *rb, int len)
 {
-	char tmp[len];
+	char tmp[len];              //这样做不会有问题?
+	//void *tmp = alloca (len); //直接在栈中分配内存
 	char *p = rb_read (rb, tmp, len);
 	lua_pushlstring (L, p, len);
 }
@@ -539,10 +550,12 @@ static void _unpack_one (lua_State * L, struct read_block *rb, int table_index);
 
 static void _unpack_table (lua_State * L, struct read_block *rb, int array_size, int table_index)
 {
+	int i;
+	uint8_t type, *t;
 	if (array_size == MAX_COOKIE - 1)
 	{
-		uint8_t type = 0;
-		uint8_t *t = rb_read (rb, &type, 1);
+		type = 0;
+		t = rb_read (rb, &type, 1);
 		if (t == NULL || (*t & 7) != TYPE_NUMBER)
 		{
 			_invalid_stream (L, rb);
@@ -550,7 +563,7 @@ static void _unpack_table (lua_State * L, struct read_block *rb, int array_size,
 		array_size = (int) _get_number (L, rb, *t >> 3);
 	}
 	lua_createtable (L, array_size, 0);
-	int i;
+
 	for (i = 1; i <= array_size; i++)
 	{
 		_unpack_one (L, rb, table_index);
@@ -571,6 +584,9 @@ static void _unpack_table (lua_State * L, struct read_block *rb, int array_size,
 
 static void _push_value (lua_State * L, struct read_block *rb, int type, int cookie, int table_index)
 {
+	uint32_t len, *plen32;
+	uint16_t *plen16;
+	struct cell *c;
 	switch (type)
 	{
 	case TYPE_NIL:
@@ -587,7 +603,7 @@ static void _push_value (lua_State * L, struct read_block *rb, int type, int coo
 		break;
 	case TYPE_CELL:
 		{
-			struct cell *c = _get_pointer (L, rb);
+			c = _get_pointer (L, rb);
 			cell_touserdata (L, table_index, c);
 			cell_release (c);
 			break;
@@ -597,15 +613,14 @@ static void _push_value (lua_State * L, struct read_block *rb, int type, int coo
 		break;
 	case TYPE_LONG_STRING:
 		{
-			uint32_t len;
 			if (cookie == 2)
 			{
-				uint16_t *plen = rb_read (rb, &len, 2);
-				if (plen == NULL)
+				plen16 = rb_read (rb, &len, 2);
+				if (plen16 == NULL)
 				{
 					_invalid_stream (L, rb);
 				}
-				_get_buffer (L, rb, (int) *plen);
+				_get_buffer (L, rb, (int) *plen16);
 			}
 			else
 			{
@@ -613,12 +628,12 @@ static void _push_value (lua_State * L, struct read_block *rb, int type, int coo
 				{
 					_invalid_stream (L, rb);
 				}
-				uint32_t *plen = rb_read (rb, &len, 4);
-				if (plen == NULL)
+				plen32 = rb_read (rb, &len, 4);
+				if (plen32 == NULL)
 				{
 					_invalid_stream (L, rb);
 				}
-				_get_buffer (L, rb, (int) *plen);
+				_get_buffer (L, rb, (int) *plen32);
 			}
 			break;
 		}
@@ -643,6 +658,9 @@ static void _unpack_one (lua_State * L, struct read_block *rb, int table_index)
 
 int data_unpack (lua_State * L)
 {
+	int i;
+	uint8_t type, *t;
+	struct read_block rb;
 	struct block *blk = lua_touserdata (L, 1);
 	if (blk == NULL)
 	{
@@ -650,18 +668,16 @@ int data_unpack (lua_State * L)
 	}
 	luaL_checktype (L, 2, LUA_TTABLE);
 	lua_settop (L, 2);
-	struct read_block rb;
 	rb_init (&rb, blk);
 
-	int i;
 	for (i = 0;; i++)
 	{
 		if (i % 16 == 15)
 		{
 			lua_checkstack (L, i);
 		}
-		uint8_t type = 0;
-		uint8_t *t = rb_read (&rb, &type, 1);
+		type = 0;
+		t = rb_read (&rb, &type, 1);
 		if (t == NULL)
 			break;
 		_push_value (L, &rb, *t & 0x7, *t >> 3, 2);

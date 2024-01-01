@@ -63,7 +63,7 @@ static inline void cell_lock (struct cell *c)
 {
 	while (__sync_lock_test_and_set (&c->lock, 1))
 	{
-		;//阻塞死锁(比较消耗cpu 资源, 这个API 尽量不要调用)
+		;														//阻塞死锁(比较消耗cpu 资源, 这个API 尽量不要调用)
 	}
 }
 
@@ -217,7 +217,7 @@ static int traceback (lua_State * L)
 
 static int lcallback (lua_State * L)
 {
-	int err,n,port = lua_tointeger (L, 1);
+	int err, n, port = lua_tointeger (L, 1);
 	void *msg = lua_touserdata (L, 2);
 	lua_settop (L, 0);
 	lua_pushvalue (L, lua_upvalueindex (1));	// traceback
@@ -240,7 +240,7 @@ static int lcallback (lua_State * L)
 			printf ("Unpack failed : %s\n", lua_tostring (L, -1));
 			return 0;
 		}
-		n = lua_gettop (L);			// traceback dispatcher ...
+		n = lua_gettop (L);					// traceback dispatcher ...
 		err = lua_pcall (L, n - 2, 0, 1);	// traceback 1
 	}
 
@@ -253,8 +253,8 @@ static int lcallback (lua_State * L)
 
 struct cell *cell_new (lua_State * L, const char *mainfile)
 {
-	struct cell *c,*sys;
-	int cell_map,err;
+	struct cell *c, *sys;
+	int cell_map, err;
 	luaL_requiref (L, "cell.c.socket", socket_lib, 0);
 	lua_pop (L, 1);
 	hive_getenv (L, "cell_map");

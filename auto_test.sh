@@ -7,3 +7,5 @@ lua_home=lua/lua-5.4.6/src
 #lua_home=lua/lua-5.1.5/src
 
 $lua_home/lua ./test.lua
+
+# objdump -T hive/core.so | grep Base

@@ -130,7 +130,7 @@ static inline void send_tick (struct cell *c)
 
 static void _updatetime (struct timer *t)
 {
-	int i,diff;
+	int i, diff;
 	uint32_t ct = _gettime ();
 	if (ct > t->current)
 	{
@@ -157,7 +157,7 @@ static void *_timer (void *p)
 
 static void *_worker (void *p)
 {
-	int i,n,ret;
+	int i, n, ret;
 	struct global_queue *mq = p;
 	for (;;)
 	{
@@ -173,7 +173,7 @@ static void *_worker (void *p)
 		}
 		if (ret)
 		{
-			usleep (1000);//休眠1000 us ??
+			usleep (1000);						//休眠1000 us ??
 			if (mq->total <= 1)
 				return NULL;
 		}
@@ -183,17 +183,17 @@ static void *_worker (void *p)
 
 static void _start (struct global_queue *gmq, struct timer *t)
 {
-	int i,thread = gmq->thread;
-	pthread_t pid[thread + 1];
+	int i;
+	pthread_t pid[gmq->thread + 1];
 
 	pthread_create (&pid[0], NULL, _timer, t);
 
-	for (i = 1; i <= thread; i++)
+	for (i = 1; i <= gmq->thread; i++)
 	{
 		pthread_create (&pid[i], NULL, _worker, gmq);
 	}
 
-	for (i = 0; i <= thread; i++)
+	for (i = 0; i <= gmq->thread; i++)
 	{
 		pthread_join (pid[i], NULL);
 	}
@@ -240,7 +240,7 @@ void scheduler_starttask (lua_State * L)
 
 int scheduler_start (lua_State * L)
 {
-	const char *system_lua,*main_lua;
+	const char *system_lua, *main_lua;
 	lua_State *sL;
 	struct global_queue *gmq;
 	int thread;

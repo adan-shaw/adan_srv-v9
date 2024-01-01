@@ -61,7 +61,7 @@ static int sp_wait (int kfd, struct event *e, int max, int timeout)
 	struct timespec timeoutspec;
 	timeoutspec.tv_sec = timeout / 1000;
 	timeoutspec.tv_nsec = (timeout % 1000) * 1000000;
-	
+
 	n = kevent (kfd, NULL, 0, ev, max, &timeoutspec);
 
 	for (i = 0; i < n; i++)

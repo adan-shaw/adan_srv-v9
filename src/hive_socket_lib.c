@@ -9,6 +9,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <alloca.h>
 
 #define MAX_ID (0x7fffffff)
 #define DEFAULT_SOCKET (128)
@@ -60,8 +61,8 @@ static int linit (lua_State * L)
 	sp->count = 0;
 	sp->cap = DEFAULT_SOCKET;
 	sp->id = 1;
-	sp->s = malloc (sp->cap * sizeof (struct socket *));//分配指针数组
-	for (i = 0; i < sp->cap; i++)												//填充指针数组
+	sp->s = malloc (sp->cap * sizeof (struct socket *));	//分配指针数组
+	for (i = 0; i < sp->cap; i++)	//填充指针数组
 	{
 		sp->s[i] = malloc (sizeof (struct socket));
 		memset (sp->s[i], 0, sizeof (struct socket));
@@ -81,8 +82,8 @@ static inline struct socket_pool *get_sp (lua_State * L)
 
 static int lexit (lua_State * L)
 {
-	struct socket_pool *pool = lua_touserdata (L, 1);
 	int i;
+	struct socket_pool *pool = lua_touserdata (L, 1);
 	if (pool->s)
 	{
 		for (i = 0; i < pool->cap; i++)
@@ -109,12 +110,12 @@ static int lexit (lua_State * L)
 
 static void expand_pool (struct socket_pool *p)
 {
-	int i;
+	int i, nid;
 	struct socket **s = malloc (p->cap * 2 * sizeof (struct socket *));
 	memset (s, 0, p->cap * 2 * sizeof (struct socket *));
 	for (i = 0; i < p->cap; i++)
 	{
-		int nid = p->s[i]->id % (p->cap * 2);
+		nid = p->s[i]->id % (p->cap * 2);
 		assert (s[nid] == NULL);
 		s[nid] = p->s[i];
 	}
@@ -134,7 +135,7 @@ static void expand_pool (struct socket_pool *p)
 static int new_socket (struct socket_pool *p, int sock)
 {
 	struct socket *s;
-	int i,id,n,keepalive;
+	int i, id, n, keepalive;
 	if (p->count >= p->cap)
 	{
 		expand_pool (p);
@@ -174,7 +175,7 @@ _error:
 
 static int lconnect (lua_State * L)
 {
-	int status;
+	int status, fd, sock;
 	struct addrinfo ai_hints;
 	struct addrinfo *ai_list = NULL;
 	struct addrinfo *ai_ptr = NULL;
@@ -193,7 +194,6 @@ static int lconnect (lua_State * L)
 	{
 		return 0;
 	}
-	int sock = -1;
 	for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next)
 	{
 		sock = socket (ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol);
@@ -218,17 +218,17 @@ static int lconnect (lua_State * L)
 		return 0;
 	}
 
-	int fd = new_socket (pool, sock);
+	fd = new_socket (pool, sock);
 	lua_pushinteger (L, fd);
 	return 1;
 }
 
 static void force_close (struct socket *s, struct socket_pool *p)
 {
-	struct write_buffer *wb = s->head;
+	struct write_buffer *tmp, *wb = s->head;
 	while (wb)
 	{
-		struct write_buffer *tmp = wb;
+		tmp = wb;
 		wb = wb->next;
 		free (tmp->buffer);
 		free (tmp);
@@ -288,8 +288,7 @@ static inline void result_n (lua_State * L, int n)
 
 static inline void remove_after_n (lua_State * L, int n)
 {
-	int t = lua_rawlen (L, 1);
-	int i;
+	int i, t = lua_rawlen (L, 1);
 	for (i = n; i <= t; i++)
 	{
 		lua_rawgeti (L, 1, i);
@@ -308,11 +307,11 @@ static inline void remove_after_n (lua_State * L, int n)
 
 static int push_result (lua_State * L, int idx, struct socket *s, struct socket_pool *p)
 {
-	int ret = 0;
+	int r = 0, ret = 0;
+	char *buffer;
 	for (;;)
 	{
-		char *buffer = malloc (READ_BUFFER);
-		int r = 0;
+		buffer = malloc (READ_BUFFER);
 		for (;;)
 		{
 			r = recv (s->fd, buffer, READ_BUFFER, 0);
@@ -362,17 +361,18 @@ static int push_result (lua_State * L, int idx, struct socket *s, struct socket_
 
 static int accept_result (lua_State * L, int idx, struct socket *s, struct socket_pool *p)
 {
-	int ret = 0;
+	int id, client_fd, ret = 0;
+	struct sockaddr_in remote_addr;
+	socklen_t len;
 	for (;;)
 	{
-		struct sockaddr_in remote_addr;
-		socklen_t len = sizeof (struct sockaddr_in);
-		int client_fd = accept (s->fd, (struct sockaddr *) &remote_addr, &len);
+		len = sizeof (struct sockaddr_in);
+		client_fd = accept (s->fd, (struct sockaddr *) &remote_addr, &len);
 		if (client_fd < 0)
 		{
 			return ret;
 		}
-		int id = new_socket (p, client_fd);
+		id = new_socket (p, client_fd);
 		if (id < 0)
 		{
 			return ret;
@@ -393,12 +393,14 @@ static int accept_result (lua_State * L, int idx, struct socket *s, struct socke
 
 static void sendout (struct socket_pool *p, struct socket *s)
 {
+	struct write_buffer *tmp;
+	int sz;
 	while (s->head)
 	{
-		struct write_buffer *tmp = s->head;
+		tmp = s->head;
 		for (;;)
 		{
-			int sz = send (s->fd, tmp->ptr, tmp->sz, 0);
+			sz = send (s->fd, tmp->ptr, tmp->sz, 0);
 			if (sz < 0)
 			{
 				switch (errno)
@@ -429,9 +431,12 @@ static void sendout (struct socket_pool *p, struct socket *s)
 
 static int lpoll (lua_State * L)
 {
+	int timeout, n, i, t = 1;
+	struct socket *s;
+	struct event *e;
 	struct socket_pool *p = get_sp (L);
 	luaL_checktype (L, 1, LUA_TTABLE);
-	int timeout = luaL_optinteger (L, 2, 100);
+	timeout = luaL_optinteger (L, 2, 100);
 	lua_settop (L, 1);
 	lua_rawgeti (L, 1, 0);
 	if (lua_isnil (L, -1))
@@ -446,15 +451,13 @@ static int lpoll (lua_State * L)
 		luaL_checktype (L, 2, LUA_TTABLE);
 	}
 
-	int n = sp_wait (p->fd, p->ev, MAX_EVENT, timeout);
-	int i;
-	int t = 1;
+	n = sp_wait (p->fd, p->ev, MAX_EVENT, timeout);
 	for (i = 0; i < n; i++)
 	{
-		struct event *e = &p->ev[i];
+		e = &p->ev[i];
 		if (e->read)
 		{
-			struct socket *s = e->s;
+			s = e->s;
 			if (s->listen)
 			{
 				t += accept_result (L, t, e->s, p);
@@ -466,7 +469,7 @@ static int lpoll (lua_State * L)
 		}
 		if (e->write)
 		{
-			struct socket *s = e->s;
+			s = e->s;
 			sendout (p, s);
 			if (s->status == STATUS_HALFCLOSE && s->head == NULL)
 			{
@@ -482,8 +485,10 @@ static int lpoll (lua_State * L)
 
 static int lsend (lua_State * L)
 {
+	char *ptr;
+	struct write_buffer *buf;
 	struct socket_pool *p = get_sp (L);
-	int id = luaL_checkinteger (L, 1);
+	int wt, id = luaL_checkinteger (L, 1);
 	int sz = luaL_checkinteger (L, 2);
 	void *msg = lua_touserdata (L, 3);
 
@@ -501,7 +506,7 @@ static int lsend (lua_State * L)
 	}
 	if (s->head)
 	{
-		struct write_buffer *buf = malloc (sizeof (*buf));
+		buf = malloc (sizeof (*buf));
 		buf->ptr = msg;
 		buf->buffer = msg;
 		buf->sz = sz;
@@ -513,11 +518,11 @@ static int lsend (lua_State * L)
 		return 0;
 	}
 
-	char *ptr = msg;
+	ptr = msg;
 
 	for (;;)
 	{
-		int wt = send (s->fd, ptr, sz, 0);
+		wt = send (s->fd, ptr, sz, 0);
 		if (wt < 0)
 		{
 			switch (errno)
@@ -537,7 +542,7 @@ static int lsend (lua_State * L)
 		break;
 	}
 
-	struct write_buffer *buf = malloc (sizeof (*buf));
+	buf = malloc (sizeof (*buf));
 	buf->next = NULL;
 	buf->ptr = ptr;
 	buf->sz = sz;
@@ -570,17 +575,18 @@ static struct socket_buffer *new_buffer (lua_State * L, int sz)
 
 static void copy_buffer (struct socket_buffer *dest, struct socket_buffer *src)
 {
-	char *ptr = (char *) (src + 1);
+	int sz, part;
+	char *d, *ptr = (char *) (src + 1);
 	if (src->tail >= src->head)
 	{
-		int sz = src->tail - src->head;
+		sz = src->tail - src->head;
 		memcpy (dest + 1, ptr + src->head, sz);
 		dest->tail = sz;
 	}
 	else
 	{
-		char *d = (char *) (dest + 1);
-		int part = src->size - src->head;
+		d = (char *) (dest + 1);
+		part = src->size - src->head;
 		memcpy (d, ptr + src->head, part);
 		memcpy (d + part, ptr, src->tail);
 		dest->tail = src->tail + part;
@@ -589,6 +595,7 @@ static void copy_buffer (struct socket_buffer *dest, struct socket_buffer *src)
 
 static void append_buffer (struct socket_buffer *buffer, char *msg, int sz)
 {
+	int part;
 	char *dst = (char *) (buffer + 1);
 	if (sz + buffer->tail < buffer->size)
 	{
@@ -597,7 +604,7 @@ static void append_buffer (struct socket_buffer *buffer, char *msg, int sz)
 	}
 	else
 	{
-		int part = buffer->size - buffer->tail;
+		part = buffer->size - buffer->tail;
 		memcpy (dst + buffer->tail, msg, part);
 		memcpy (dst, msg + part, sz - part);
 		buffer->tail = sz - part;
@@ -606,8 +613,9 @@ static void append_buffer (struct socket_buffer *buffer, char *msg, int sz)
 
 static int lpush (lua_State * L)
 {
-	struct socket_buffer *buffer = lua_touserdata (L, 1);
-	int bytes = 0;
+	int sz, bytes = 0;
+	void *msg;
+	struct socket_buffer *nbuf, *buffer = lua_touserdata (L, 1);
 	if (buffer)
 	{
 		bytes = buffer->tail - buffer->head;
@@ -616,7 +624,7 @@ static int lpush (lua_State * L)
 			bytes += buffer->size;
 		}
 	}
-	void *msg = lua_touserdata (L, 2);
+	msg = lua_touserdata (L, 2);
 	if (msg == NULL)
 	{
 		lua_settop (L, 1);
@@ -624,16 +632,16 @@ static int lpush (lua_State * L)
 		return 2;
 	}
 
-	int sz = luaL_checkinteger (L, 3);
+	sz = luaL_checkinteger (L, 3);
 
 	if (buffer == NULL)
 	{
-		struct socket_buffer *nbuf = new_buffer (L, sz * 2);
+		nbuf = new_buffer (L, sz * 2);
 		append_buffer (nbuf, msg, sz);
 	}
 	else if (sz + bytes >= buffer->size)
 	{
-		struct socket_buffer *nbuf = new_buffer (L, (sz + bytes) * 2);
+		nbuf = new_buffer (L, (sz + bytes) * 2);
 		copy_buffer (nbuf, buffer);
 		append_buffer (nbuf, msg, sz);
 	}
@@ -649,13 +657,16 @@ static int lpush (lua_State * L)
 
 static int lpop (lua_State * L)
 {
+	int sz, bytes;
+	char *ptr;
+	luaL_Buffer b;
 	struct socket_buffer *buffer = lua_touserdata (L, 1);
 	if (buffer == NULL)
 	{
 		return 0;
 	}
-	int sz = luaL_checkinteger (L, 2);
-	int bytes = buffer->tail - buffer->head;
+	sz = luaL_checkinteger (L, 2);
+	bytes = buffer->tail - buffer->head;
 	if (bytes < 0)
 	{
 		bytes += buffer->size;
@@ -673,7 +684,7 @@ static int lpop (lua_State * L)
 		sz = bytes;
 	}
 
-	char *ptr = (char *) (buffer + 1);
+	ptr = (char *) (buffer + 1);
 	if (buffer->size - buffer->head >= sz)
 	{
 		lua_pushlstring (L, ptr + buffer->head, sz);
@@ -681,7 +692,6 @@ static int lpop (lua_State * L)
 	}
 	else
 	{
-		luaL_Buffer b;
 		luaL_buffinit (L, &b);
 		luaL_addlstring (&b, ptr + buffer->head, buffer->size - buffer->head);
 		buffer->head = sz - (buffer->size - buffer->head);
@@ -702,11 +712,11 @@ static int lpop (lua_State * L)
 
 static inline int check_sep (struct socket_buffer *buffer, int from, const char *sep, int sz)
 {
+	int i, index;
 	const char *ptr = (const char *) (buffer + 1);
-	int i;
 	for (i = 0; i < sz; i++)
 	{
-		int index = from + i;
+		index = from + i;
 		if (index >= buffer->size)
 		{
 			index %= buffer->size;
@@ -721,25 +731,28 @@ static inline int check_sep (struct socket_buffer *buffer, int from, const char 
 
 static int lreadline (lua_State * L)
 {
+	int i, read, bytes, index;
+	size_t len;
+	const char *sep, *ptr;
+	luaL_Buffer b;
 	struct socket_buffer *buffer = lua_touserdata (L, 1);
 	if (buffer == NULL)
 	{
 		return 0;
 	}
-	size_t len = 0;
-	const char *sep = luaL_checklstring (L, 2, &len);
-	int read = !lua_toboolean (L, 3);
-	int bytes = buffer->tail - buffer->head;
+	len = 0;
+	sep = luaL_checklstring (L, 2, &len);
+	read = !lua_toboolean (L, 3);
+	bytes = buffer->tail - buffer->head;
 
 	if (bytes < 0)
 	{
 		bytes += buffer->size;
 	}
 
-	int i;
 	for (i = 0; i <= bytes - (int) len; i++)
 	{
-		int index = buffer->head + i;
+		index = buffer->head + i;
 		if (index >= buffer->size)
 		{
 			index -= buffer->size;
@@ -758,14 +771,13 @@ static int lreadline (lua_State * L)
 				}
 				else
 				{
-					const char *ptr = (const char *) (buffer + 1);
+					ptr = (const char *) (buffer + 1);
 					if (--index < 0)
 					{
 						index = buffer->size - 1;
 					}
 					if (index < buffer->head)
 					{
-						luaL_Buffer b;
 						luaL_buffinit (L, &b);
 						luaL_addlstring (&b, ptr + buffer->head, buffer->size - buffer->head);
 						luaL_addlstring (&b, ptr, index + 1);
@@ -793,9 +805,10 @@ static int lreadline (lua_State * L)
 static int lsendpack (lua_State * L)
 {
 	size_t len = 0;
+	void *msg;
 	const char *str = luaL_checklstring (L, 1, &len);
 	lua_pushinteger (L, (int) len);
-	void *msg = malloc (len);
+	msg = malloc (len);
 	memcpy (msg, str, len);
 	lua_pushlightuserdata (L, msg);
 
@@ -813,15 +826,19 @@ static int lfreepack (lua_State * L)
 
 static int llisten (lua_State * L)
 {
+	struct sockaddr_in my_addr;
+	uint32_t addr = INADDR_ANY;
+	char *portstr;
+	int port = 0, listen_fd, id, reuse;
+	size_t len = 0;
+	struct socket *s;
 	struct socket_pool *p = get_sp (L);
 	// only support ipv4
-	int port = 0;
-	size_t len = 0;
-	const char *name = luaL_checklstring (L, 1, &len);
+	const char *name = luaL_checklstring (L, 1, &len);	//检查(获取)字符串长度
 	char binding[len + 1];
+	//void *binding = alloca (len + 1);	//分配缓冲区
 	memcpy (binding, name, len + 1);
-	char *portstr = strchr (binding, ':');
-	uint32_t addr = INADDR_ANY;
+	portstr = strchr (binding, ':');
 	if (portstr == NULL)
 	{
 		port = strtol (binding, NULL, 10);
@@ -840,18 +857,17 @@ static int llisten (lua_State * L)
 		portstr[0] = '\0';
 		addr = inet_addr (binding);
 	}
-	int listen_fd = socket (AF_INET, SOCK_STREAM, 0);
-	int id = new_socket (p, listen_fd);
+	listen_fd = socket (AF_INET, SOCK_STREAM, 0);
+	id = new_socket (p, listen_fd);
 	if (id < 0)
 	{
 		return luaL_error (L, "Create socket %s failed", name);
 	}
-	struct socket *s = p->s[id % p->cap];
+	s = p->s[id % p->cap];
 	s->listen = 1;
-	int reuse = 1;
+	reuse = 1;
 	setsockopt (listen_fd, SOL_SOCKET, SO_REUSEADDR, (void *) &reuse, sizeof (int));
 
-	struct sockaddr_in my_addr;
 	//memset (&my_addr, 0, sizeof (struct sockaddr_in));
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = htons (port);
@@ -874,7 +890,6 @@ static int llisten (lua_State * L)
 
 int socket_lib (lua_State * L)
 {
-	luaL_checkversion (L);
 	luaL_Reg l[] = {
 		{"init", linit},
 		{"connect", lconnect},
@@ -889,8 +904,10 @@ int socket_lib (lua_State * L)
 		{"listen", llisten},
 		{NULL, NULL},
 	};
+	struct socket_pool *sp;
+	luaL_checkversion (L);
 	luaL_newlibtable (L, l);
-	struct socket_pool *sp = lua_newuserdata (L, sizeof (*sp));
+	sp = lua_newuserdata (L, sizeof (*sp));
 	memset (sp, 0, sizeof (*sp));
 	sp->fd = sp_init ();
 	lua_newtable (L);
