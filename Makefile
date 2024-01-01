@@ -7,7 +7,7 @@ lua_home=lua/lua-5.4.6/src
 LIB_DYNAMIC_HEADFILE_PATH += -I$(lua_home)
 LIB_DYNAMIC_PATH += -L$(lua_home)
 #LDFLAGS += -llua51
-LDFLAGS += -llua53
+LDFLAGS += -llua54
 
 
 
@@ -40,7 +40,7 @@ hive/core.so : $(SRC)
 
 # win(或许永远不会用到)
 LUALIB_MINGW=-I/usr/local/include -L/usr/local/bin -llua51
-#LUALIB_MINGW=-I/usr/local/include -L/usr/local/bin -llua52
+#LUALIB_MINGW=-I/usr/local/include -L/usr/local/bin -llua54
 hive/core.dll : $(SRC)
 	gcc $(LIB_DYNAMIC_HEADFILE_PATH) -g3 -Wall --shared -o $@ $^ -lpthread -march=i686 -lws2_32
 	#gcc $(LUALIB_MINGW) -g -Wall --shared -o $@ $^ -lpthread -march=i686 -lws2_32
