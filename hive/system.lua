@@ -11,8 +11,7 @@ local timer = {}
 local free_queue = {}
 local socket_cell = nil
 
--- 禁用断言
-_ASSERT = false
+
 
 local function alloc_queue()
 	local n = #free_queue
@@ -31,6 +30,7 @@ end
 
 function command.launch(name, ...)
 	local fullname = assert(package.searchpath(name, package.path), "cell was not found")
+	local fullname = package.searchpath(name, package.path)
 	local c = system.launch(fullname)
 	if c then
 		-- 4 is launch port

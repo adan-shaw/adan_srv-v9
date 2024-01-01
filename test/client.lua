@@ -7,7 +7,6 @@ function cell.main(fd, addr)
 	local obj = cell.bind(fd)
 	cell.fork(function()
 		local line = obj:readline "\n"
-		--local line = obj:readline(fd)
 		obj:write(line)
 		obj:disconnect()
 		cell.exit()

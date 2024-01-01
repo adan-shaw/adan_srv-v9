@@ -827,7 +827,7 @@ static int lfreepack (lua_State * L)
 static int llisten (lua_State * L)
 {
 	struct sockaddr_in my_addr;
-	uint32_t addr = INADDR_ANY;
+	uint32_t addr = INADDR_ANY;	//默认只能是: 混杂模式
 	char *portstr;
 	int port = 0, listen_fd, id, reuse;
 	size_t len = 0;
@@ -838,13 +838,13 @@ static int llisten (lua_State * L)
 	char binding[len + 1];
 	//void *binding = alloca (len + 1);	//分配缓冲区
 	memcpy (binding, name, len + 1);
-	portstr = strchr (binding, ':');
+	portstr = strchr (binding, ':');	//如果带':'号, 则以':'作为分隔, 如果不带, 则默认port=number数字
 	if (portstr == NULL)
 	{
 		port = strtol (binding, NULL, 10);
 		if (port <= 0)
 		{
-			return luaL_error (L, "Invalid address %s", name);
+			return luaL_error (L, "Invalid port %s", name);
 		}
 	}
 	else
@@ -852,12 +852,12 @@ static int llisten (lua_State * L)
 		port = strtol (portstr + 1, NULL, 10);
 		if (port <= 0)
 		{
-			return luaL_error (L, "Invalid address %s", name);
+			return luaL_error (L, "Invalid addr:port %s", name);
 		}
-		portstr[0] = '\0';
-		addr = inet_addr (binding);
+		portstr[0] = '\0';//起始位置, 结束字符串(逻辑上貌似是正确的, 但这样写代码, 非常多地址偏移, 666!! 后期一旦移动出错, 就会崩溃)
+		addr = inet_addr (binding);//带分号, 则做地址转换
 	}
-	listen_fd = socket (AF_INET, SOCK_STREAM, 0);
+	listen_fd = socket (AF_INET, SOCK_STREAM, 0);//TCP 流式套接字
 	id = new_socket (p, listen_fd);
 	if (id < 0)
 	{

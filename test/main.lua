@@ -38,13 +38,16 @@ function cell.main()
 		cell.cmd("kill",ping) end
 	)
 
+	--无解!! bug, 链接没反映, 链接后不能进行io 操作, sock:readline() 报错!! (这个版本, 就是这里出现问题!!)
 	cell.fork(function()
 		--休息一秒后, 启动一个connect() 到server, 测试是否可以成功connect()
 		cell.sleep(100)
-		local sock = cell.connect("localhost", 8888)
-		local line = sock:readline(fd)
-		print(line)
-		sock:write(line .. "\n") end
+		--local sock = cell.connect("localhost", 8888)
+		local sock = cell.connect("127.0.0.1", 8888)
+		--local line = sock:readline(fd)
+		--print(line)
+		--sock:write(line .. "\n")
+		end
 	)
 
 	--调用10 次cell.call,ping

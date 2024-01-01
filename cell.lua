@@ -27,8 +27,7 @@ cell.self = self
 local event_q1 = {}
 local event_q2 = {}
 
--- 禁用断言
-_ASSERT = false
+
 
 local function new_task(source, session, co, event)
 	task_coroutine[event] = co
@@ -212,6 +211,7 @@ end
 function cell.listen(port, accepter)
 	assert(type(accepter) == "function")
 	sockets_fd = sockets_fd or cell.cmd("socket")
+	--使用断言assert 来启动listen(), 如果出错, 程序直接终止!! 用assert 替换if 的小把戏
 	local obj = { __fd = assert(cell.call(sockets_fd, "listen", self, port), "Listen failed") }
 	sockets_accept[obj.__fd] =  function(fd, addr)
 		return accepter(fd, addr, obj)

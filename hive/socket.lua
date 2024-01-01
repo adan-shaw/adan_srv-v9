@@ -9,8 +9,7 @@ local type = type
 local pcall = pcall
 csocket.init()
 
--- 禁用断言
-_ASSERT = false
+
 
 function command.connect(source,addr,port)
 	local fd = csocket.connect(addr, port)
@@ -20,6 +19,8 @@ function command.connect(source,addr,port)
 	end
 end
 
+--listen() 默认addr是: INADDR_ANY(混杂模式)!! 传递c.self = source? (这里貌似报错了)
+--成功返回fd, 失败返回nil
 function command.listen(source, port)
 	local fd = csocket.listen(port)
 	if fd then
