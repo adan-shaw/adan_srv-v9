@@ -35,8 +35,8 @@ macosx: hive/core.dylib
 
 # linux/freebsd
 hive/core.so : $(SRC)
-	gcc $(LIB_DYNAMIC_HEADFILE_PATH) -g3 -Wall --shared -fPIC -o $@ $^ -lpthread
-	#gcc $(LIB_DYNAMIC_HEADFILE_PATH) -Wall --shared -fPIC -o $@ $^ -lpthread
+	#gcc $(LIB_DYNAMIC_HEADFILE_PATH) -g3 -Wall --shared -fPIC -o $@ $^ -lpthread
+	gcc -DNDEBUG $(LIB_DYNAMIC_HEADFILE_PATH) -Wall --shared -fPIC -o $@ $^ -lpthread
 
 # win(或许永远不会用到)
 LUALIB_MINGW=-I/usr/local/include -L/usr/local/bin -llua51
