@@ -11,23 +11,24 @@ csocket.init()
 
 
 
+--成功返回fd, 失败返回nil [csocket.connect() 总是失败返回nil, 导致不能完成test]
 function command.connect(source,addr,port)
-	local fd = csocket.connect(addr, port)
-	print("command.connect(): fd=",fd)--for test
-	if fd then
-		sockets[fd] = source
-		return fd
+	local id = csocket.connect(addr, port)
+	print("command.connect(): id=",id)--for test
+	if id then
+		sockets[id] = source
+		return id
 	end
 end
 
 --listen() 默认addr是: INADDR_ANY(混杂模式)!! 传递c.self = source? (这里貌似报错了)
 --成功返回fd, 失败返回nil
 function command.listen(source, port)
-	local fd = csocket.listen(port)
-	print("command.connect(): fd=",fd)--for test
-	if fd then
-		sockets[fd] = source
-		return fd
+	local id = csocket.listen(port)
+	print("command.connect(): id=",id)--for test
+	if id then
+		sockets[id] = source
+		return id
 	end
 end
 

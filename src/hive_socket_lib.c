@@ -175,7 +175,7 @@ _error:
 
 static int lconnect (lua_State * L)
 {
-	int status, fd, sock;
+	int status, id, sock;
 	struct addrinfo ai_hints,*ai_list = NULL,*ai_ptr = NULL;
 
 	struct socket_pool *pool = get_sp (L);
@@ -216,8 +216,8 @@ static int lconnect (lua_State * L)
 		return 0;
 	}
 
-	fd = new_socket (pool, sock);
-	lua_pushinteger (L, fd);
+	id = new_socket (pool, sock);
+	lua_pushinteger (L, id);
 	return 1;
 }
 
@@ -888,6 +888,7 @@ static int llisten (lua_State * L)
 
 int socket_lib (lua_State * L)
 {
+	//socket api list
 	luaL_Reg l[] = {
 		{"init", linit},
 		{"connect", lconnect},

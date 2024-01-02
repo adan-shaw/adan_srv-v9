@@ -45,7 +45,7 @@ function cell.main()
 		cell.sleep(500)
 		local sock = cell.connect("localhost", 8888)
 		--local sock = cell.connect("127.0.0.1", 8888)
-		local line = sock:readline(fd)
+		local line = sock:readline()
 		print(line)
 		sock:write(line .. "\n")
 		end
