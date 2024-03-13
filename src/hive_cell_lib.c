@@ -34,7 +34,7 @@ static int lsend (lua_State * L)
 		return 0;
 	}
 	lua_pushcfunction (L, data_pack);
-	lua_replace (L, 2);						// cell data_pack ...
+	lua_replace (L, 2);// cell data_pack ...
 	n = lua_gettop (L);
 	lua_call (L, n - 2, 1);
 	msg = lua_touserdata (L, 2);

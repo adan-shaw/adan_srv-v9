@@ -173,7 +173,7 @@ static void *_worker (void *p)
 		}
 		if (ret)
 		{
-			usleep (1000);						//休眠1000 us ??
+			usleep (1000);//休眠1000 us ??
 			if (mq->total <= 1)
 				return NULL;
 		}

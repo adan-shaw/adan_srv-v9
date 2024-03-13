@@ -61,8 +61,8 @@ static int linit (lua_State * L)
 	sp->count = 0;
 	sp->cap = DEFAULT_SOCKET;
 	sp->id = 1;
-	sp->s = malloc (sp->cap * sizeof (struct socket *));	//分配指针数组
-	for (i = 0; i < sp->cap; i++)	//填充指针数组
+	sp->s = malloc (sp->cap * sizeof (struct socket *));//分配指针数组
+	for (i = 0; i < sp->cap; i++)//填充指针数组
 	{
 		sp->s[i] = malloc (sizeof (struct socket));
 		memset (sp->s[i], 0, sizeof (struct socket));

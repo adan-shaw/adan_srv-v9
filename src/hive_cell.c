@@ -63,7 +63,7 @@ static inline void cell_lock (struct cell *c)
 {
 	while (__sync_lock_test_and_set (&c->lock, 1))
 	{
-		;														//阻塞死锁(比较消耗cpu 资源, 这个API 尽量不要调用)
+		;//阻塞死锁(比较消耗cpu 资源, 这个API 尽量不要调用)
 	}
 }
 
@@ -220,28 +220,28 @@ static int lcallback (lua_State * L)
 	int err, n, port = lua_tointeger (L, 1);
 	void *msg = lua_touserdata (L, 2);
 	lua_settop (L, 0);
-	lua_pushvalue (L, lua_upvalueindex (1));	// traceback
+	lua_pushvalue (L, lua_upvalueindex (1));// traceback
 	if (msg == NULL)
 	{
-		lua_pushvalue (L, lua_upvalueindex (3));	// dispatcher 3
+		lua_pushvalue (L, lua_upvalueindex (3));// dispatcher 3
 		lua_pushinteger (L, port);
 		err = lua_pcall (L, 1, 0, 1);
 	}
 	else
 	{
-		lua_pushvalue (L, lua_upvalueindex (3));	// traceback dispatcher 
-		lua_pushinteger (L, port);	// traceback dispatcher port
-		lua_pushvalue (L, lua_upvalueindex (2));	// traceback dispatcher port data_unpack
-		lua_pushlightuserdata (L, msg);	// traceback dispatcher port data_unpack msg
-		lua_pushvalue (L, lua_upvalueindex (4));	// traceback dispatcher port data_unpack msg cell_map 
+		lua_pushvalue (L, lua_upvalueindex (3));// traceback dispatcher 
+		lua_pushinteger (L, port);// traceback dispatcher port
+		lua_pushvalue (L, lua_upvalueindex (2));// traceback dispatcher port data_unpack
+		lua_pushlightuserdata (L, msg);// traceback dispatcher port data_unpack msg
+		lua_pushvalue (L, lua_upvalueindex (4));// traceback dispatcher port data_unpack msg cell_map 
 		err = lua_pcall (L, 2, LUA_MULTRET, 1);
 		if (err)
 		{
 			printf ("Unpack failed : %s\n", lua_tostring (L, -1));
 			return 0;
 		}
-		n = lua_gettop (L);					// traceback dispatcher ...
-		err = lua_pcall (L, n - 2, 0, 1);	// traceback 1
+		n = lua_gettop (L);// traceback dispatcher ...
+		err = lua_pcall (L, n - 2, 0, 1);// traceback 1
 	}
 
 	if (err)
@@ -258,16 +258,16 @@ struct cell *cell_new (lua_State * L, const char *mainfile)
 	luaL_requiref (L, "cell.c.socket", socket_lib, 0);
 	lua_pop (L, 1);
 	hive_getenv (L, "cell_map");
-	cell_map = lua_absindex (L, -1);	// cell_map
-	luaL_requiref (L, "cell.c", cell_lib, 0);	// cell_map cell_lib
+	cell_map = lua_absindex (L, -1);// cell_map
+	luaL_requiref (L, "cell.c", cell_lib, 0);// cell_map cell_lib
 	c = cell_create ();
 	c->L = L;
-	cell_touserdata (L, cell_map, c);	// cell_map cell_lib cell_ud
+	cell_touserdata (L, cell_map, c);// cell_map cell_lib cell_ud
 
-	lua_setfield (L, -2, "self");	// cell_map cell_lib
+	lua_setfield (L, -2, "self");// cell_map cell_lib
 
 	hive_getenv (L, "system_pointer");
-	sys = lua_touserdata (L, -1);	// cell_map cell_lib system_cell
+	sys = lua_touserdata (L, -1);// cell_map cell_lib system_cell
 	lua_pop (L, 1);
 	if (sys)
 	{
@@ -294,15 +294,15 @@ struct cell *cell_new (lua_State * L, const char *mainfile)
 		lua_pop (L, 1);
 		goto _error;
 	}
-	lua_pushcfunction (L, traceback);	// upvalue 1
-	lua_pushcfunction (L, data_unpack);	// upvalue 2
-	hive_getenv (L, "dispatcher");	// upvalue 3
+	lua_pushcfunction (L, traceback);// upvalue 1
+	lua_pushcfunction (L, data_unpack);// upvalue 2
+	hive_getenv (L, "dispatcher");// upvalue 3
 	if (!lua_isfunction (L, -1))
 	{
 		printf ("set dispatcher first\n");
 		goto _error;
 	}
-	hive_getenv (L, "cell_map");	// upvalue 4
+	hive_getenv (L, "cell_map");// upvalue 4
 	lua_pushlightuserdata (L, c);
 	lua_pushcclosure (L, lcallback, 5);
 	return c;
@@ -323,7 +323,7 @@ void cell_close (struct cell *c)
 
 static void _dispatch (lua_State * L, struct message *m)
 {
-	lua_pushvalue (L, 1);					// dup callback
+	lua_pushvalue (L, 1);// dup callback
 	lua_pushinteger (L, m->port);
 	lua_pushlightuserdata (L, m->buffer);
 	lua_call (L, 2, 0);
